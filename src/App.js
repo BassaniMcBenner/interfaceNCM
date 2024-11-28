@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { saveAs } from "file-saver"; // Biblioteca para salvar arquivos
 
 function App() {
   const [ncmInput, setNcmInput] = useState(""); // Entrada de NCM
@@ -22,13 +23,32 @@ function App() {
     try {
       // Faz a chamada POST para a API
       const response = await axios.post(url, payload);
-      console.log("response: ", response);
       setApiResponse(response.data); // Salva a resposta
       setError(null); // Limpa mensagens de erro
     } catch (e) {
       setApiResponse(null); // Limpa a resposta em caso de erro
       setError(`Erro na API: ${e.response?.data || e.message}`);
     }
+  };
+
+  const gerarCsv = () => {
+    if (!apiResponse || apiResponse.length === 0) {
+      setError("Nenhuma resposta disponível para salvar.");
+      return;
+    }
+
+    // Criação do conteúdo do CSV
+    const csvHeader = "codigo,reducao,descricao,anexo,reforma_tributaria,descricao_concatenada\n";
+    const csvRows = apiResponse.map(
+      ({ codigo, reducao, descricao, anexo, reforma_tributaria, descricao_concatenada }) =>
+        `${codigo},"${reducao}","${descricao}","${anexo}","${reforma_tributaria}","${descricao_concatenada}"`
+    );
+    
+    const csvContent = csvHeader + csvRows.join("\n");
+
+    // Cria um blob e baixa o arquivo
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    saveAs(blob, "ncm_respostas.csv");
   };
 
   return (
@@ -72,6 +92,24 @@ function App() {
         Consultar API
       </button>
 
+      {/* Botão para gerar CSV */}
+      {apiResponse && (
+        <button
+          onClick={gerarCsv}
+          style={{
+            backgroundColor: "#28a745",
+            color: "white",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "5px",
+            cursor: "pointer",
+            marginLeft: "10px",
+          }}
+        >
+          Gerar CSV
+        </button>
+      )}
+
       {/* Exibição de Erro */}
       {error && (
         <div style={{ marginTop: "20px", color: "red", fontWeight: "bold" }}>
@@ -88,9 +126,8 @@ function App() {
             border: "1px solid #ccc",
             borderRadius: "5px",
             backgroundColor: "#f9f9f9",
-            height: "1000px",
-            whiteSpace: "pre-wrap", // Garante a quebra de linha automática
-            wordWrap: "break-word", // Quebra palavras grandes
+            height: "400px",
+            overflowY: "scroll",
           }}
         >
           <h3>Resultado da API:</h3>
